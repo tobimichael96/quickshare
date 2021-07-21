@@ -7,6 +7,8 @@ from io import BytesIO
 import qrcode
 from flask import Flask, redirect, url_for, request, render_template
 from flask_socketio import SocketIO, emit, join_room
+from PIL import Image, ImageDraw
+
 
 app = Flask(__name__, template_folder="templates")
 socketio = SocketIO(app)
