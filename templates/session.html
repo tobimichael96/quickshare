@@ -66,7 +66,6 @@
 
     // Check if this is the first visit, if yes, show the tip.
     if (!window.localStorage.isReturningVisitor) {
-        console.log("Going to show alert.");
         $('#tip').append('<div class="alert alert-secondary alert-dismissible fade show" role="alert">' +
             '<strong>Tip!</strong> Click on the text to copy it to clipboard.' +
             '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
@@ -92,7 +91,7 @@
             return
         }
         socket.emit('message', {
-            message: message.val(),
+            message: message.val().trim(),
             room: '{{ identifier }}'
         })
         message.val('').focus()
