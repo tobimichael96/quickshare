@@ -1,0 +1,50 @@
+/* global */
+@import url('https://fonts.googleapis.com/css?family=Roboto');
+
+body {
+    font-family: 'Roboto', sans-serif;
+    background-color: #222831;
+    color: black;
+    text-align: center;
+    padding-top: 8vh;
+}
+
+.title {
+    color: #ffd369;
+    font-size: 2rem;
+    padding-bottom: 5vh;
+}
+
+.qr-code {
+    padding: 3vh;
+}
+
+.message-holder {
+    min-height: 39vh;
+    max-height: 39vh;
+    overflow-y: scroll;
+    border-radius: .25rem;
+    margin-bottom: .5rem;
+    padding: .5rem;
+    border-color: darkgray;
+    border-style: solid;
+}
+
+.message {
+    color: #eeeeee;
+    text-align: left;
+    font-size: 1.2rem;
+    padding: .25rem;
+    border-radius: .25rem;
+}
+
+.message:hover {
+    background-color: gray;
+    border-radius: .25rem;
+}
+
+.bb {
+    min-width: 14vh;
+    margin-left: .5rem;
+    margin-right: .5rem;
+}

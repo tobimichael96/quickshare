@@ -10,7 +10,7 @@ from flask_socketio import SocketIO, emit, join_room
 from PIL import Image, ImageDraw
 
 
-app = Flask(__name__, template_folder="templates")
+app = Flask(__name__)
 socketio = SocketIO(app)
 
 
@@ -20,7 +20,7 @@ def main():
     return redirect(url_for('session_chat', identifier=identifier))
 
 
-@app.route('/session/<identifier>')
+@app.route('/<identifier>')
 def session_chat(identifier):
     qr_code = generate_qr(request.url)
     return render_template("session.html", qr_code=qr_code, identifier=identifier)
@@ -51,10 +51,10 @@ def generate_qr(url):
     qr = qrcode.QRCode(
         version=1,
         box_size=12,
-        border=3)
+        border=0)
     qr.add_data(url)
     qr.make(fit=True)
-    img = qr.make_image(fill='black', back_color='white')
+    img = qr.make_image(fill_color='white', back_color="#222831")
     buffered_img = BytesIO()
     img.save(buffered_img, format="JPEG")
     encoded = base64.b64encode(buffered_img.getvalue())

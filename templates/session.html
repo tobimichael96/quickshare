@@ -13,22 +13,16 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/3.0.4/socket.io.js"
             integrity="sha512-aMGMvNYu8Ue4G+fHa359jcPb1u+ytAF+P2SCb+PxrjCdO3n3ZTxJ30zuH39rimUggmTwmh2u7wvQsDTHESnmfQ=="
             crossorigin="anonymous"></script>
+    <link rel="stylesheet" type="text/css" href="{{ url_for('static',filename='styles/style.css') }}">
 </head>
-<body style="text-align: center; padding-top: 5vh">
-
-<div style="padding-bottom: 5vh">
-    <h3>TM-Quickshare</h3>
-</div>
-
+<body>
+<div class="title">TM-Quickshare</div>
 
 <div class="container">
     <div class="row align-items-center">
         <div class="col" style="min-width: 40%">
-            <div class="alert alert-secondary alert-dismissible fade show" role="alert">
-                <strong>Tip!</strong> Click on the text to copy to clipboard.
-                <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
-            </div>
-            <div class="card" id="message_holder" style="max-height: 40vh; overflow-y: scroll"></div>
+            <div id="tip"></div>
+            <div class="message-holder" id="message_holder"></div>
             <form class="row g-2" action="" method="POST" role="form">
                 <div class="col">
                     <input autofocus type="text" class="form-control" id="message" placeholder="Message"/>
@@ -40,59 +34,100 @@
         </div>
 
         <div class="col">
-            <div>
+            <div class="qr-code">
                 <img src="{{ qr_code }}" alt="QR Code">
             </div>
             <div>
-                <a href="/" class="btn btn-primary btn-lg" role="button" aria-disabled="true">Reset session</a>
+                <a href="/" class="btn btn-primary bb" role="button" aria-disabled="true">New session</a>
+                <button type="button" id="device_name" class="btn btn-primary bb" data-bs-toggle="tooltip"
+                        data-bs-placement="top" title="">Reset name
+                </button>
             </div>
         </div>
     </div>
 </div>
 
+<script>
+    // Check if the user already set a device name, if not force them to set one.
+    if (!window.localStorage.Name) {
+        let device_name = "";
+        do {
+            device_name = prompt("Please enter a device name:");
+        } while (device_name == null || device_name.trim().length === 0);
+        window.localStorage.Name = device_name;
+    }
 
-<script type="text/javascript">
+    // Set the button text to the chosen device name.
+    $('#device_name').on('click', function (e) {
+        e.preventDefault();
+        localStorage.removeItem("Name");
+        window.location.href = '/';
+    });
+
+    // Check if this is the first visit, if yes, show the tip.
+    if (!window.localStorage.isReturningVisitor) {
+        console.log("Going to show alert.");
+        $('#tip').append('<div class="alert alert-secondary alert-dismissible fade show" role="alert">' +
+            '<strong>Tip!</strong> Click on the text to copy it to clipboard.' +
+            '<button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>' +
+            '</div>');
+        window.localStorage.isReturningVisitor = true;
+    }
+
+    // Connect to the websocket.
     const socket = io.connect('https://' + document.domain + ':' + location.port);
     socket.on('connect', function () {
         socket.emit('init', {
             room: '{{ identifier }}',
-            user: navigator.platform
+            user: window.localStorage.Name
         })
-    })
-    socket.on('disconnect', function () {
-        window.location.href = '/';
-    })
+    });
+
+    // Send the message to the server if the input is not empty.
     $('#submit').on('click', function (e) {
         e.preventDefault()
         let message = $('#message')
+        if (message.val().trim().length === 0) {
+            message.val('').focus()
+            return
+        }
         socket.emit('message', {
             message: message.val(),
             room: '{{ identifier }}'
         })
         message.val('').focus()
-    })
+    });
 
-    function copyToClipboard(input) {
-        let text = input.textContent
-        text = text.slice(text.lastIndexOf(': ') + 1,)
-        navigator.clipboard.writeText(text)
-    }
+    // Redirect to home when socket is disconnected. This will force a new session.
+    socket.on('disconnect', function () {
+        window.location.href = '/';
+    });
 
+    // Add a system message, that a new device joined the session.
     socket.on('joined', function (msg) {
         let message_holder = $('#message_holder')
-        message_holder.append('<div class="card-body" style="text-align: left"><b>System: </b>' + msg.message + '</div>')
+        message_holder.append('<div class="message"><b>System: </b>' + msg.message + '</div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });
-    })
+    });
+
+    // Add the received message to the chat box.
     socket.on('response', function (msg) {
         let message_holder = $('#message_holder')
-        message_holder.append('<div class="card-body" style="text-align: left">' +
+        message_holder.append('<div class="message">' +
             '<div onclick="copyToClipboard(this)"><b>' + msg.time + ': </b>' + msg.message + '</div></div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });
-    })
+    });
+
+    // Helper function to copy a message to the clipboard. Works only on https.
+    function copyToClipboard(input) {
+        let text = input.textContent;
+        text = text.slice(text.lastIndexOf(': ') + 1,);
+        navigator.clipboard.writeText(text);
+    }
 </script>
 
 </body>
