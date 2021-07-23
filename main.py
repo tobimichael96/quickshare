@@ -22,15 +22,15 @@ class Session:
         self.identifier = identifier
         self.secret = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
         if members is None:
-            members = []
+            members = {}
         self.members = members
         sessions.append(self)
 
-    def add_member(self, member):
-        self.members.append(member)
+    def add_member(self, user_id, name):
+        self.members[user_id] = name
 
-    def remove_member(self, member):
-        self.members.remove(member)
+    def remove_member(self, user_id):
+        self.members.pop(user_id)
         if len(self.members) == 0:
             sessions.remove(self)
 
@@ -46,10 +46,10 @@ class Session:
                "Members: {}".format(self.identifier, self.secret, self.members)
 
 
-def get_session_by_member(member):
+def get_session_by_user_id(user_id):
     for session in sessions:
-        for member_session in session.members:
-            if member_session == member:
+        for user_id_session in session.members.keys():
+            if user_id_session == user_id:
                 return session
     return None
 
@@ -61,6 +61,12 @@ def get_session_by_identifier(identifier):
     return Session(identifier)
 
 
+def cleanup_sessions():
+    for session in sessions:
+        if len(session.members) == 0:
+            sessions.remove(session)
+
+
 @app.route('/')
 def main():
     identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
@@ -69,6 +75,7 @@ def main():
 
 @app.route('/s/<identifier>')
 def session_chat(identifier):
+    cleanup_sessions()
     secret = request.args.get('secret')
     if not secret:
         session = Session(identifier)
@@ -82,7 +89,7 @@ def disconnect():
     user_id = request.sid
     for room in rooms():
         leave_room(room)
-    session = get_session_by_member(user_id)
+    session = get_session_by_user_id(user_id)
     if session:
         session.remove_member(user_id)
 
@@ -95,6 +102,7 @@ def joined(join):
     secret = join['secret']
     session = get_session_by_identifier(identifier)
     user_id = request.sid
+    user_name = join['user']
     if session.get_secret() != secret:
         message = {
             "message": "You tried to join a session without the correct secret. "
@@ -103,19 +111,22 @@ def joined(join):
         emit('error', message, to=user_id)
         time = datetime.now().strftime('%H:%M')
         message = {
-            "time": time,
-            "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(join['user'], time)
+            "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(user_name, time)
         }
         emit('system', message, to=identifier)
         return
-    session.add_member(user_id)
+    session.add_member(user_id, user_name)
     join_room(identifier)
     time = datetime.now().strftime('%H:%M')
-    response = {
-        "time": time,
-        "message": "New device ({}) joined the room at {}.".format(join['user'], time)
+    message = {
+        "message": "New device ({}) joined the room at {}.".format(user_name, time)
     }
-    emit('system', response, to=identifier)
+    emit('system', message, to=identifier)
+    room_devices = ", ".join(room for room in session.members.values())
+    message = {
+        "message": "Current devices in the room: {}.".format(room_devices)
+    }
+    emit('system', message, to=identifier)
 
 
 @socketio.on('message')
