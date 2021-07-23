@@ -104,10 +104,9 @@ def joined(join):
         time = datetime.now().strftime('%H:%M')
         message = {
             "time": time,
-            "message": "Device ({}) tried to join the room with wrong password at {}. "
-                       "A new session will be created for you in 5 seconds.".format(join['user'], time)
+            "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(join['user'], time)
         }
-        emit('error', message, to=identifier)
+        emit('system', message, to=identifier)
         return
     session.add_member(user_id)
     join_room(identifier)
