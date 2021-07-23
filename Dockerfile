@@ -4,7 +4,7 @@ RUN mkdir /quickshare/
 WORKDIR /quickshare/
 
 COPY requirements.txt .
-RUN pip install -r requirements.txt && pip install pillow
+RUN pip install -r requirements.txt
 
 COPY main.py /quickshare/main.py
 COPY templates /quickshare/templates

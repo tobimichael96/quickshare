@@ -77,7 +77,8 @@
     const socket = io.connect('https://' + document.domain + ':' + location.port);
     socket.on('connect', function () {
         socket.emit('init', {
-            room: '{{ identifier }}',
+            room: '{{ room }}',
+            secret: '{{ secret }}',
             user: window.localStorage.Name
         })
     });
@@ -92,7 +93,7 @@
         }
         socket.emit('message', {
             message: message.val().trim(),
-            room: '{{ identifier }}'
+            room: '{{ room }}'
         })
         message.val('').focus()
     });
@@ -102,8 +103,20 @@
         window.location.href = '/';
     });
 
-    // Add a system message, that a new device joined the session.
-    socket.on('joined', function (msg) {
+    // Redirect to home when breach is send.
+    socket.on('error', function (msg) {
+        let message_holder = $('#message_holder')
+        message_holder.append('<div class="message"><b>System: </b>' + msg.message + '</div>')
+        message_holder.scrollTop(function () {
+            return this.scrollHeight;
+        });
+        window.setTimeout(function(){
+            window.location.href = '/';
+        }, 5000);
+    });
+
+    // Add a system message to the chat box.
+    socket.on('system', function (msg) {
         let message_holder = $('#message_holder')
         message_holder.append('<div class="message"><b>System: </b>' + msg.message + '</div>')
         message_holder.scrollTop(function () {
