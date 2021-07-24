@@ -25,8 +25,7 @@ body {
 }
 
 .message-holder {
-    min-height: 42vh;
-    max-height: 42vh;
+    height: 42vh;
     overflow-y: scroll;
     border-radius: .25rem;
     margin-bottom: .5rem;
@@ -55,7 +54,7 @@ body {
 }
 
 /* media */
-@media (max-width: 800px) {
+@media (max-width: 1000px) {
     .grid {
         grid-template-columns: 1fr;
     }
@@ -65,8 +64,7 @@ body {
     }
 
     .message-holder {
-        min-height: 48vh;
-        max-height: 48vh;
+        height: 48vh;
     }
 
     .title {
