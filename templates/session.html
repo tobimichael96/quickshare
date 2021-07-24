@@ -95,7 +95,8 @@
         }
         socket.emit('message', {
             message: message.val().trim(),
-            room: '{{ room }}'
+            room: '{{ room }}',
+            secret: '{{ secret }}',
         })
         message.val('').focus()
     });

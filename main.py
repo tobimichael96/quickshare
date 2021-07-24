@@ -67,6 +67,14 @@ def cleanup_sessions():
             sessions.remove(session)
 
 
+def check_secret(secret, identifier):
+    session = get_session_by_identifier(identifier)
+    if secret == session.get_secret():
+        return True
+    else:
+        return False
+
+
 @app.route('/')
 def main():
     identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
@@ -100,10 +108,9 @@ def joined(join):
     if not identifier:
         return
     secret = join['secret']
-    session = get_session_by_identifier(identifier)
     user_id = request.sid
     user_name = join['user']
-    if session.get_secret() != secret:
+    if not check_secret(secret, identifier):
         message = {
             "message": "You tried to join a session without the correct secret. "
                        "A new session will be created for you in 5 seconds."
@@ -115,6 +122,7 @@ def joined(join):
         }
         emit('system', message, to=identifier)
         return
+    session = get_session_by_identifier(identifier)
     session.add_member(user_id, user_name)
     join_room(identifier)
     time = datetime.now().strftime('%H:%M')
@@ -130,8 +138,11 @@ def joined(join):
 
 
 @socketio.on('message')
-def write_to_site(message):
+def handle_message(message):
     identifier = message['room']
+    secret = message['secret']
+    if not check_secret(secret, identifier):
+        return
     if not identifier:
         return
     time = datetime.now().strftime('%H:%M')
