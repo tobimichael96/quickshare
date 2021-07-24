@@ -79,6 +79,7 @@ body {
     .qr-code {
         max-width: 90%;
         height: auto;
+        padding-bottom: 2vh;
     }
 
     .right-buttons {

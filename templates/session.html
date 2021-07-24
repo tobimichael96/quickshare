@@ -56,7 +56,7 @@
         do {
             device_name = prompt("Please enter a device name:");
         } while (device_name == null || device_name.trim().length === 0);
-        window.localStorage.Name = device_name;
+        window.localStorage.Name = device_name.trim();
     }
 
     // Set the button text to the chosen device name.
