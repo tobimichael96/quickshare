@@ -25,8 +25,8 @@ body {
 }
 
 .message-holder {
-    min-height: 39vh;
-    max-height: 39vh;
+    min-height: 42vh;
+    max-height: 42vh;
     overflow-y: scroll;
     border-radius: .25rem;
     margin-bottom: .5rem;
@@ -62,6 +62,11 @@ body {
 
     body {
         padding-top: 3vh;
+    }
+
+    .message-holder {
+        min-height: 48vh;
+        max-height: 48vh;
     }
 
     .title {
