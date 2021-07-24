@@ -3,6 +3,7 @@
 
 .grid {
     display: grid;
+    margin: 0 auto;
     grid-template-columns: repeat(2, 1fr);
 }
 
@@ -21,11 +22,11 @@ body {
 }
 
 .qr-code-holder {
-    padding: 3vh;
+    padding-top: 3vh;
 }
 
 .message-holder {
-    height: 42vh;
+    min-height: 55vh;
     overflow-y: scroll;
     border-radius: .25rem;
     margin-bottom: .5rem;
@@ -48,9 +49,11 @@ body {
 }
 
 .right-buttons {
-    min-width: 14vh;
-    margin-left: .5rem;
-    margin-right: .5rem;
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    column-gap: 1rem;
+    margin-left: 5rem;
+    margin-right: 5rem;
 }
 
 /* media */
@@ -60,21 +63,27 @@ body {
     }
 
     body {
-        padding-top: 3vh;
+        padding-top: 2vh;
     }
 
     .message-holder {
-        height: 48vh;
+        height: 75vh;
     }
 
     .title {
         color: #ffd369;
         font-size: 1.5rem;
-        padding-bottom: 2vh;
+        padding-bottom: 1.5vh;
     }
 
     .qr-code {
         max-width: 90%;
         height: auto;
+    }
+
+    .right-buttons {
+        padding-top: 3vh;
+        margin-left: .5rem;
+        margin-right: .5rem;
     }
 }
