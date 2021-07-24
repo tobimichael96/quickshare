@@ -75,7 +75,7 @@
     }
 
     // Connect to the websocket.
-    const socket = io.connect(location.protocol + document.domain + ':' + location.port);
+    const socket = io.connect(location.protocol + "//" + document.domain + ':' + location.port);
     socket.on('connect', function () {
         socket.emit('init', {
             room: '{{ room }}',
