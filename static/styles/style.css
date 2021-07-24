@@ -1,21 +1,26 @@
 /* global */
 @import url('https://fonts.googleapis.com/css?family=Roboto');
 
+.grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+}
+
 body {
     font-family: 'Roboto', sans-serif;
     background-color: #222831;
     color: black;
     text-align: center;
-    padding-top: 8vh;
+    padding-top: 5vh;
 }
 
 .title {
     color: #ffd369;
     font-size: 2rem;
-    padding-bottom: 5vh;
+    padding-bottom: 3vh;
 }
 
-.qr-code {
+.qr-code-holder {
     padding: 3vh;
 }
 
@@ -43,8 +48,30 @@ body {
     border-radius: .25rem;
 }
 
-.bb {
+.right-buttons {
     min-width: 14vh;
     margin-left: .5rem;
     margin-right: .5rem;
+}
+
+/* media */
+@media (max-width: 800px) {
+    .grid {
+        grid-template-columns: 1fr;
+    }
+
+    body {
+        padding-top: 3vh;
+    }
+
+    .title {
+        color: #ffd369;
+        font-size: 1.5rem;
+        padding-bottom: 2vh;
+    }
+
+    .qr-code {
+        max-width: 90%;
+        height: auto;
+    }
 }
