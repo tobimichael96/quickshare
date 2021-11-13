@@ -165,7 +165,7 @@ def handle_system_message(message):
     if not identifier:
         return
         
-    if message == "/current":
+    if message['message'] == "/current":
         session = get_session_by_identifier(identifier)
         system_message = "Current members: {}.".format(get_members())
     else:
