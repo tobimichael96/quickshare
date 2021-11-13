@@ -93,11 +93,19 @@
             message.val('').focus()
             return
         }
-        socket.emit('message', {
-            message: message.val().trim(),
-            room: '{{ room }}',
-            secret: '{{ secret }}',
-        })
+        if (message.val().trim().indexOf('/') === 0) {
+            socket.emit('system_message', {
+                message: message.val().trim(),
+                room: '{{ room }}',
+                secret: '{{ secret }}',
+            })
+        } else {
+            socket.emit('message', {
+                message: message.val().trim(),
+                room: '{{ room }}',
+                secret: '{{ secret }}',
+            })
+        }
         message.val('').focus()
     });
 
