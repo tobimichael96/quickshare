@@ -167,7 +167,7 @@ def handle_system_message(message):
         
     if message['message'] == "/current":
         session = get_session_by_identifier(identifier)
-        system_message = "Current members: {}.".format(get_members())
+        system_message = "Current members: {}.".format(session.get_members())
     else:
         system_message = "Not implemented yet."
     time = datetime.now().strftime('%H:%M')
