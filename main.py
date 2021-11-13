@@ -34,7 +34,7 @@ class Session:
         if len(self.members) == 0:
             sessions.remove(self)
             
-    def get_members():
+    def get_members(self):
         return ','.join(self.members)
 
     def get_identifier(self):
