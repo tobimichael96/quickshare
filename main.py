@@ -35,7 +35,7 @@ class Session:
             sessions.remove(self)
             
     def get_members(self):
-        return ','.join(self.members)
+        return ','.join(self.members.values())
 
     def get_identifier(self):
         return self.identifier
