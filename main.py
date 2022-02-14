@@ -1,4 +1,5 @@
 import base64
+import logging
 import random
 import string
 from datetime import datetime
@@ -9,10 +10,8 @@ from flask import Flask, redirect, url_for, request, render_template
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 from PIL import Image, ImageDraw
 
-
 app = Flask(__name__)
 socketio = SocketIO(app)
-
 
 sessions = []
 
@@ -75,6 +74,11 @@ def check_secret(secret, identifier):
         return False
 
 
+def check_session_empty(identifier):
+    session = get_session_by_identifier(identifier)
+    return len(session.members.keys()) == 0
+
+
 @app.route('/')
 def main():
     identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
@@ -89,7 +93,7 @@ def session_chat(identifier):
         session = Session(identifier)
         secret = session.get_secret()
     qr_code = generate_qr(request.url, secret)
-    return render_template("session.html", qr_code=qr_code, room=identifier, secret=secret)
+    return render_template("session.html", qr_code=qr_code, room=identifier)
 
 
 @socketio.on('disconnect')
@@ -102,29 +106,47 @@ def disconnect():
         session.remove_member(user_id)
 
 
+def send_error(user_id, identifier, user_name):
+    message = {
+        "message": "You tried to join a session without the correct secret. "
+                   "A new session will be created for you in 5 seconds."
+    }
+    emit('error', message, to=user_id)
+    time = datetime.now().strftime('%H:%M')
+    message = {
+        "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(user_name, time)
+    }
+    emit('system', message, to=identifier)
+
+
 @socketio.on('init')
 def joined(join):
     identifier = join['room']
     if not identifier:
         return
-    secret = join['secret']
     user_id = request.sid
     user_name = join['user']
-    if not check_secret(secret, identifier):
-        message = {
-            "message": "You tried to join a session without the correct secret. "
-                       "A new session will be created for you in 5 seconds."
-        }
-        emit('error', message, to=user_id)
-        time = datetime.now().strftime('%H:%M')
-        message = {
-            "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(user_name, time)
-        }
-        emit('system', message, to=identifier)
-        return
     session = get_session_by_identifier(identifier)
-    session.add_member(user_id, user_name)
-    join_room(identifier)
+    if 'secret' in join:
+        secret = join['secret']
+        if not check_secret(secret, identifier):
+            send_error(user_id, identifier, user_name)
+            return
+        else:
+            session.add_member(user_id, user_name)
+            join_room(identifier)
+    else:
+        if not check_session_empty(identifier):
+            send_error(user_id, identifier, user_name)
+            return
+        else:
+            session.add_member(user_id, user_name)
+            join_room(identifier)
+            message = {
+                "secret": "{}".format(session.get_secret())
+            }
+            emit('secret', message, to=identifier)
+
     time = datetime.now().strftime('%H:%M')
     message = {
         "message": "New device ({}) joined the room at {}.".format(user_name, time)

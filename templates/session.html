@@ -50,6 +50,23 @@
 </div>
 
 <script>
+    function getSearchParameters() {
+        let paramStr = window.location.search.substr(1);
+        return paramStr != null && paramStr !== "" ? transformToAssocArray(paramStr) : {};
+    }
+
+    function transformToAssocArray(paramStr) {
+        let params = {};
+        let paramList = paramStr.split("&");
+        for ( let i = 0; i < paramList.length; i++) {
+            let tempParams = paramList[i].split("=");
+            params[tempParams[0]] = tempParams[1];
+        }
+        return params;
+    }
+    let params = getSearchParameters();
+    let secret = params.secret;
+
     // Check if the user already set a device name, if not force them to set one.
     if (!window.localStorage.Name) {
         let device_name = "";
@@ -80,9 +97,14 @@
     socket.on('connect', function () {
         socket.emit('init', {
             room: '{{ room }}',
-            secret: '{{ secret }}',
+            secret: secret,
             user: window.localStorage.Name
         })
+    });
+
+    // Receive the secret from the system.
+    socket.on('secret', function (msg) {
+        secret = msg.secret
     });
 
     // Send the message to the server if the input is not empty.
@@ -96,7 +118,7 @@
         socket.emit('message', {
             message: message.val().trim(),
             room: '{{ room }}',
-            secret: '{{ secret }}',
+            secret: secret,
         })
         message.val('').focus()
     });
