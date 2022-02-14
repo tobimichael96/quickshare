@@ -32,6 +32,9 @@ class Session:
         self.members.pop(user_id)
         if len(self.members) == 0:
             sessions.remove(self)
+            
+    def get_members(self):
+        return ', '.join(self.members.values())
 
     def get_identifier(self):
         return self.identifier
@@ -173,6 +176,33 @@ def handle_message(message):
         "message": message['message']
     }
     emit('response', response, to=identifier)
+
+
+@socketio.on('system_message')
+def handle_system_message(message):
+    identifier = message['room']
+    secret = message['secret']
+    if not check_secret(secret, identifier):
+        return
+    if not identifier:
+        return
+        
+    if message['message'] == "/current":
+        session = get_session_by_identifier(identifier)
+        system_message = "Current members: {}.".format(session.get_members())
+    else:
+        system_message = "Not implemented yet."
+    time = datetime.now().strftime('%H:%M')
+    response = {
+        "time": time,
+        "message": message['message']
+    }
+    emit('response', response, to=identifier)
+    response_system = {
+        "time": time,
+        "message": system_message
+    }
+    emit('response', response_system, to=identifier)
 
 
 def generate_qr(url, secret):
