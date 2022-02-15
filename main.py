@@ -23,10 +23,14 @@ class Session:
         if members is None:
             members = {}
         self.members = members
+        self.qr_code = None
         sessions.append(self)
 
     def add_member(self, user_id, name):
         self.members[user_id] = name
+
+    def add_qr(self, qr_code):
+        self.qr_code = qr_code
 
     def remove_member(self, user_id):
         self.members.pop(user_id)
@@ -41,6 +45,12 @@ class Session:
 
     def get_secret(self):
         return self.secret
+
+    def get_qr(self):
+        return self.qr_code
+
+    def get_user_name_by_user_id(self, user_id):
+        return self.members[user_id]
 
     def __repr__(self):
         return "Identifier: {}\n" \
@@ -91,12 +101,12 @@ def main():
 @app.route('/s/<identifier>')
 def session_chat(identifier):
     cleanup_sessions()
-    secret = request.args.get('secret')
-    if not secret:
+    if not request.args.get('secret'):
         session = Session(identifier)
         secret = session.get_secret()
-    qr_code = generate_qr(request.url, secret)
-    return render_template("session.html", qr_code=qr_code, room=identifier)
+        session.add_qr(generate_qr(request.url, secret))
+        logging.debug("Created new session ({}).".format(session.get_identifier()))
+    return render_template("session.html", room=identifier)
 
 
 @socketio.on('disconnect')
@@ -107,6 +117,7 @@ def disconnect():
     session = get_session_by_user_id(user_id)
     if session:
         session.remove_member(user_id)
+        logging.debug("Removed user ({}) from session ({}).".format(session.get_user_name_by_user_id(user_id), session.get_identifier()))
 
 
 def send_error(user_id, identifier, user_name):
@@ -130,26 +141,29 @@ def joined(join):
     user_id = request.sid
     user_name = join['user']
     session = get_session_by_identifier(identifier)
+    messages = []
     if 'secret' in join:
         secret = join['secret']
         if not check_secret(secret, identifier):
             send_error(user_id, identifier, user_name)
+            logging.error("The secret the device ({}) provided was not correct.".format(user_name))
             return
-        else:
-            session.add_member(user_id, user_name)
-            join_room(identifier)
     else:
         if not check_session_empty(identifier):
             send_error(user_id, identifier, user_name)
+            logging.error("The device ({}) did not provide any secret, but the session was not empty.".format(user_name))
             return
         else:
-            session.add_member(user_id, user_name)
-            join_room(identifier)
-            message = {
-                "secret": "{}".format(session.get_secret())
-            }
-            emit('secret', message, to=identifier)
-
+            logging.debug("The device ({}) did not provide a secret and the session was empty.".format(user_name))
+            messages.append({"secret": {"secret": "{}".format(session.get_secret())}})
+    session.add_member(user_id, user_name)
+    join_room(identifier)
+    logging.debug("Added member ({}) to session ({}).".format(session.get_members(), session.get_identifier()))
+    messages.append({"qrcode": {"qrcode": "{}".format(session.get_qr())}})
+    for message in messages:
+        for key in message:
+            emit(key, message[key], to=user_id)
+            logging.debug("Sent message ({}) to the device ({}).".format(key, user_name))
     time = datetime.now().strftime('%H:%M')
     message = {
         "message": "New device ({}) joined the room at {}.".format(user_name, time)
@@ -222,4 +236,5 @@ def generate_qr(url, secret):
 
 
 if __name__ == '__main__':
+    logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     socketio.run(app, port=8080, host='0.0.0.0')

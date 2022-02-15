@@ -43,7 +43,7 @@
                 <button type="button" id="device_name" class="btn btn-primary">Reset name</button>
             </div>
             <div class="qr-code-holder">
-                <img class="qr-code" src="{{ qr_code }}" alt="QR Code">
+                <img id="qrcode" class="qr-code" alt="QR Code" src="">
             </div>
         </div>
     </div>
@@ -105,6 +105,11 @@
     // Receive the secret from the system.
     socket.on('secret', function (msg) {
         secret = msg.secret
+    });
+
+    // Receive the qrcode from the system.
+    socket.on('qrcode', function (msg) {
+        document.getElementById("qrcode").src=msg.qrcode;
     });
 
     // Send the message to the server if the input is not empty.
