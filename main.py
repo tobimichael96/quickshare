@@ -98,6 +98,11 @@ def main():
     return redirect(url_for('session_chat', identifier=identifier))
 
 
+@app.route('/favicon.ico')
+def fav():
+    return app.send_static_file('favicon.png')
+
+
 @app.route('/s/<identifier>')
 def session_chat(identifier):
     cleanup_sessions()
