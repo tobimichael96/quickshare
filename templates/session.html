@@ -24,18 +24,13 @@
     <div class="align-items-center grid">
         <div>
             <div class="message-holder" id="message_holder"></div>
-            <form class="row g-2" action="" method="POST" role="form">
-                <div class="col">
-                    <input autofocus type="text" class="form-control" id="message" placeholder="Message"/>
-                </div>
-                <div class="col-auto">
-                    <button type="submit" id="submit" class="btn btn-primary"
-                            data-bs-toggle="popover" data-bs-trigger="focus"
-                            title="Dismissible popover"
-                            data-bs-content="">Send
-                    </button>
-                </div>
-            </form>
+            <div class="input-group">
+                <input autofocus type="text" class="form-control" id="message" placeholder="Message"/>
+                <button type="submit" id="send" class="btn btn-primary">Send</button>
+                <button type="submit" id="clear" class="btn btn-primary" style="display: none">Clear</button>
+                <input type="file" class="form-control" id="file_input" style="display: none">
+                <button id="upload" class="btn btn-primary">Upload</button>
+            </div>
         </div>
 
         <div>
@@ -77,13 +72,6 @@
         window.localStorage.Name = device_name.trim();
     }
 
-    // Set the button text to the chosen device name.
-    $('#device_name').on('click', function (e) {
-        e.preventDefault();
-        localStorage.removeItem("Name");
-        window.location.href = '/';
-    });
-
     // Check if this is the first visit, if yes, show the tip.
     if (!window.localStorage.isReturningVisitor) {
         $('#message_holder').append('<div class="alert alert-secondary alert-small alert-dismissible fade show" role="alert">' +
@@ -92,6 +80,25 @@
             '</div>');
         window.localStorage.isReturningVisitor = true;
     }
+
+    // Get input fields and buttons
+    const message_input = document.getElementById("message");
+    message_input.focus();
+    const send_button = document.getElementById("send");
+    const clear_button = document.getElementById("clear");
+    const upload_button = document.getElementById("upload");
+    const device_name = document.getElementById("device_name");
+
+    // Reset the device name.
+    device_name.onclick = function (e) {
+        e.preventDefault();
+        localStorage.removeItem("Name");
+        window.location.href = '/';
+    };
+
+    // Add event handler to input
+    const file_input = document.getElementById("file_input");
+    file_input.addEventListener('change', filenameToMessage);
 
     // Connect to the websocket.
     const socket = io.connect(location.protocol + "//" + document.domain + ':' + location.port);
@@ -114,28 +121,71 @@
     });
 
     // Send the message to the server if the input is not empty.
-    $('#submit').on('click', function (e) {
+    send_button.onclick = function (e) {
         e.preventDefault()
-        let message = $('#message')
-        if (message.val().trim().length === 0) {
-            message.val('').focus()
+        if (message_input.value.trim().length === 0) {
+            message_input.value = '';
+            message_input.focus();
             return
         }
-        if (message.val().trim().indexOf('/') === 0) {
+        if (message_input.value.trim().indexOf('/') === 0) {
             socket.emit('system_message', {
-                message: message.val().trim(),
+                message: message_input.value.trim(),
                 room: '{{ room }}',
                 secret: secret,
             })
         } else {
             socket.emit('message', {
-                message: message.val().trim(),
+                message: message_input.value.trim(),
                 room: '{{ room }}',
                 secret: secret,
             })
         }
-        message.val('').focus()
+        message_input.value = '';
+        message_input.focus()
+    };
+
+    // Execute a function when the user releases a key on the keyboard
+    message_input.addEventListener("keyup", function(e) {
+        // Number 13 is the "Enter" key on the keyboard
+        if (e.keyCode === 13) {
+            // Cancel the default action, if needed
+            e.preventDefault();
+            // Trigger the button element with a click
+            send_button.click();
+        }
     });
+
+    // Clear button
+    clear_button.onclick = function (e) {
+        e.preventDefault();
+        file_input.value = '';
+        message_input.value = '';
+        send_button.style.display = "";
+        clear_button.style.display = "none";
+    };
+
+    // Send file to server
+    upload_button.onclick = function (e) {
+        e.preventDefault()
+        let file = file_input.files[0];
+
+        if (!file) {
+            file_input.click();
+            return;
+        }
+        if (file.size > 1000000) {
+            alert('File should be smaller than 1MB');
+            return;
+        }
+
+        socket.emit('message', {
+            data: file,
+            name: file.name.replace(/\s+/g, ''),
+            room: '{{ room }}',
+            secret: secret,
+        });
+    };
 
     // Redirect to home when socket is disconnected. This will force a new session.
     socket.on('disconnect', function () {
@@ -173,12 +223,29 @@
         });
     });
 
+    // Add the received message to the chat box.
+    socket.on('upload', function (msg) {
+        let message_holder = $('#message_holder')
+        message_holder.append('<div class="message">' +
+            '<b>' + msg.time + ': </b><a href="{{ room }}/' + msg.message + '"target="_blank"' + '>' + msg.message + '</a></div>')
+        message_holder.scrollTop(function () {
+            return this.scrollHeight;
+        });
+    });
+
     // Helper function to copy a message to the clipboard. Works only on https.
     function copyToClipboard(input) {
         let text = input.textContent;
         let regex = /(\d*:\d*: )(.*)/;
         let matches = text.match(regex);
         navigator.clipboard.writeText(matches[2]);
+    }
+
+    // Function to set message field to file name
+    function filenameToMessage() {
+        message_input.value = file_input.files[0].name.replace(/\s+/g, '');
+        send_button.style.display = "none";
+        clear_button.style.display = "";
     }
 </script>
 

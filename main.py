@@ -4,9 +4,11 @@ import random
 import string
 from datetime import datetime
 from io import BytesIO
+import os
+import shutil
 
 import qrcode
-from flask import Flask, redirect, url_for, request, render_template
+from flask import Flask, redirect, url_for, request, render_template, send_from_directory#
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 from PIL import Image, ImageDraw
 
@@ -34,8 +36,7 @@ class Session:
 
     def remove_member(self, user_id):
         self.members.pop(user_id)
-        if len(self.members) == 0:
-            sessions.remove(self)
+        cleanup_sessions()
             
     def get_members(self):
         return ', '.join(self.members.values())
@@ -75,7 +76,23 @@ def get_session_by_identifier(identifier):
 
 def cleanup_sessions():
     for session in sessions:
+        logging.debug(f"Session found {session.identifier}, members: {len(session.members)}")
         if len(session.members) == 0:
+            session_folder = f"{dir_path}/s/{session.identifier}"
+            if os.path.exists(session_folder):
+                logging.debug("Folder exists, going to clean up.")
+                for filename in os.listdir(session_folder):
+                    file_path = os.path.join(session_folder, filename)
+                    try:
+                        if os.path.isfile(file_path) or os.path.islink(file_path):
+                            os.unlink(file_path)
+                        elif os.path.isdir(file_path):
+                            shutil.rmtree(file_path)
+                    except Exception as e:
+                        print('Failed to delete %s. Reason: %s' % (file_path, e))
+                shutil.rmtree(session_folder)
+            else:
+                logging.debug("Folder does not exist, nothing to do.")
             sessions.remove(session)
 
 
@@ -114,15 +131,24 @@ def session_chat(identifier):
     return render_template("session.html", room=identifier)
 
 
+@app.route('/<path:filepath>', methods=['GET'])
+def download(filepath):
+    logging.debug(f"File requested: {filepath}")
+    filename = filepath.split('/')[2]
+    path = f"{dir_path}/s/{filepath.split('/')[1]}"
+    return send_from_directory(directory=path, path=filename, as_attachment=True)
+
+
 @socketio.on('disconnect')
 def disconnect():
     user_id = request.sid
+    logging.debug(f"Received disconnect from {user_id}.")
     for room in rooms():
         leave_room(room)
     session = get_session_by_user_id(user_id)
     if session:
-        session.remove_member(user_id)
         logging.debug("Removed user ({}) from session ({}).".format(session.get_user_name_by_user_id(user_id), session.get_identifier()))
+        session.remove_member(user_id)
 
 
 def send_error(user_id, identifier, user_name):
@@ -189,12 +215,28 @@ def handle_message(message):
         return
     if not identifier:
         return
+
     time = datetime.now().strftime('%H:%M')
-    response = {
-        "time": time,
-        "message": message['message']
-    }
-    emit('response', response, to=identifier)
+    if "data" in message:
+        file = message['data']
+        filename = message['name']
+        filepath = f"{dir_path}/s/{identifier}"
+        if not os.path.exists(filepath):
+            os.makedirs(filepath)
+        out_file = open(f"{filepath}/{filename}", "wb")
+        out_file.write(file)
+        out_file.close()
+        response = {
+            "time": time,
+            "message": filename
+        }
+        emit('upload', response, to=identifier)
+    else:
+        response = {
+            "time": time,
+            "message": message['message']
+        }
+        emit('response', response, to=identifier)
 
 
 @socketio.on('system_message')
@@ -241,5 +283,6 @@ def generate_qr(url, secret):
 
 
 if __name__ == '__main__':
+    dir_path = os.path.dirname(os.path.realpath(__file__))
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     socketio.run(app, port=8080, host='0.0.0.0')
