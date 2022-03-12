@@ -176,8 +176,9 @@
     // Helper function to copy a message to the clipboard. Works only on https.
     function copyToClipboard(input) {
         let text = input.textContent;
-        text = text.slice(text.lastIndexOf(':') + 2,);
-        navigator.clipboard.writeText(text);
+        let regex = /(\d*:\d*: )(.*)/;
+        let matches = text.match(regex);
+        navigator.clipboard.writeText(matches[2]);
     }
 </script>
 
