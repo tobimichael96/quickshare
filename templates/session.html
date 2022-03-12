@@ -185,6 +185,12 @@
             room: '{{ room }}',
             secret: secret,
         });
+
+        file_input.value = '';
+        message_input.value = '';
+        message_input.focus();
+        send_button.style.display = "";
+        clear_button.style.display = "none";
     };
 
     // Redirect to home when socket is disconnected. This will force a new session.
