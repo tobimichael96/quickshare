@@ -1,4 +1,5 @@
 import base64
+import io
 import logging
 import random
 import string
@@ -8,9 +9,11 @@ import os
 import shutil
 
 import qrcode
-from flask import Flask, redirect, url_for, request, render_template, send_from_directory#
+from flask import Flask, redirect, url_for, request, render_template, send_from_directory, send_file
 from flask_socketio import SocketIO, emit, join_room, leave_room, rooms
 from PIL import Image, ImageDraw
+from cryptography.fernet import Fernet
+
 
 app = Flask(__name__)
 socketio = SocketIO(app)
@@ -131,12 +134,30 @@ def session_chat(identifier):
     return render_template("session.html", room=identifier)
 
 
-@app.route('/<path:filepath>', methods=['GET'])
+@app.route('/s/<path:filepath>', methods=['GET'])
 def download(filepath):
-    logging.debug(f"File requested: {filepath}")
-    filename = filepath.split('/')[2]
-    path = f"{dir_path}/s/{filepath.split('/')[1]}"
-    return send_from_directory(directory=path, path=filename, as_attachment=True)
+    filename = filepath.split('/')[1]
+    fernet = Fernet(encryption_key)
+    absolute_path = f"{dir_path}/s/{filepath}"
+    if os.path.exists(absolute_path):
+        logging.debug(f"File requested: {filepath}")
+        with open(absolute_path, 'rb') as enc_file:
+            encrypted = enc_file.read()
+        decrypted = fernet.decrypt(encrypted)
+        return send_file(io.BytesIO(decrypted), download_name=filename, as_attachment=True)
+    else:
+        logging.error(f"File requested, but not found: {filepath}")
+        return render_template('404.html'), 404
+
+
+@app.errorhandler(404)
+def page_not_found(e):
+    return render_template('404.html'), 404
+
+
+@app.errorhandler(502)
+def page_not_found(e):
+    return render_template('404.html'), 404
 
 
 @socketio.on('disconnect')
@@ -223,8 +244,11 @@ def handle_message(message):
         filepath = f"{dir_path}/s/{identifier}"
         if not os.path.exists(filepath):
             os.makedirs(filepath)
+
+        fernet = Fernet(encryption_key)
         out_file = open(f"{filepath}/{filename}", "wb")
-        out_file.write(file)
+        encrypted = fernet.encrypt(file)
+        out_file.write(encrypted)
         out_file.close()
         response = {
             "time": time,
@@ -284,5 +308,10 @@ def generate_qr(url, secret):
 
 if __name__ == '__main__':
     dir_path = os.path.dirname(os.path.realpath(__file__))
+    files_path = f'{dir_path}/s'
+    if os.path.exists(files_path):
+        shutil.rmtree(files_path)
+    # Generate key and keep it only in memory
+    encryption_key = Fernet.generate_key()
     logging.basicConfig(format='%(asctime)s - %(levelname)s - %(message)s', level=logging.DEBUG)
     socketio.run(app, port=8080, host='0.0.0.0')
