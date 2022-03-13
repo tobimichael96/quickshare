@@ -152,7 +152,11 @@
             // Cancel the default action, if needed
             e.preventDefault();
             // Trigger the button element with a click
-            send_button.click();
+            if (send_button.style.display === "none") {
+                upload_button.click();
+            } else {
+                send_button.click();
+            }
         }
     });
 
