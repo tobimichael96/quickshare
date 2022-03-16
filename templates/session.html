@@ -32,15 +32,11 @@
                 <button id="upload" class="btn btn-primary">Upload</button>
             </div>
         </div>
-
         <div>
-            <div class="right-buttons">
-                <a href="/" class="btn btn-primary" role="button" aria-disabled="true">New session</a>
-                <button type="button" id="device_name" class="btn btn-primary">Reset name</button>
-            </div>
             <div class="qr-code-holder">
                 <img id="qrcode" class="qr-code" alt="QR Code" src="">
             </div>
+            <button type="button" style="width: 55%; margin-top: 2vh" id="stop_session" class="btn btn-primary">Stop session</button>
         </div>
     </div>
 </div>
@@ -63,15 +59,6 @@
     let params = getSearchParameters();
     let secret = params.secret;
 
-    // Check if the user already set a device name, if not force them to set one.
-    if (!window.localStorage.Name) {
-        let device_name = "";
-        do {
-            device_name = prompt("Please enter a device name:");
-        } while (device_name == null || device_name.trim().length === 0);
-        window.localStorage.Name = device_name.trim();
-    }
-
     // Check if this is the first visit, if yes, show the tip.
     if (!window.localStorage.isReturningVisitor) {
         $('#message_holder').append('<div class="alert alert-secondary alert-small alert-dismissible fade show" role="alert">' +
@@ -87,14 +74,13 @@
     const send_button = document.getElementById("send");
     const clear_button = document.getElementById("clear");
     const upload_button = document.getElementById("upload");
-    const device_name = document.getElementById("device_name");
+    const stop_session = document.getElementById("stop_session");
 
-    // Reset the device name.
-    device_name.onclick = function (e) {
+    // End session.
+    stop_session.onclick = function (e) {
         e.preventDefault();
-        localStorage.removeItem("Name");
-        window.location.href = '/';
-    };
+        socket.disconnect();
+    }
 
     // Add event handler to input
     const file_input = document.getElementById("file_input");
@@ -198,7 +184,7 @@
         clear_button.style.display = "none";
     };
 
-    // Redirect to home when socket is disconnected. This will force a new session.
+    // Redirect to home when socket is disconnected. This will force stop the session.
     socket.on('disconnect', function () {
         window.location.href = '/';
     });

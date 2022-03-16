@@ -48,14 +48,6 @@ body {
     border-radius: .25rem;
 }
 
-.right-buttons {
-    display: grid;
-    grid-template-columns: repeat(2, 1fr);
-    column-gap: 1rem;
-    margin-left: 5rem;
-    margin-right: 5rem;
-}
-
 /* media */
 @media (max-width: 1000px) {
     .grid {

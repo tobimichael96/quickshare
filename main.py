@@ -81,7 +81,7 @@ def cleanup_sessions():
     for session in sessions:
         logging.debug(f"Session found {session.identifier}, members: {len(session.members)}")
         if len(session.members) == 0:
-            session_folder = f"{dir_path}/s/{session.identifier}"
+            session_folder = f"{files_path}/{session.identifier}"
             if os.path.exists(session_folder):
                 logging.debug("Folder exists, going to clean up.")
                 for filename in os.listdir(session_folder):
@@ -112,20 +112,25 @@ def check_session_empty(identifier):
     return len(session.members.keys()) == 0
 
 
-@app.route('/')
-def main():
-    identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
-    return redirect(url_for('session_chat', identifier=identifier))
-
-
 @app.route('/favicon.ico')
 def fav():
     return app.send_static_file('favicon.png')
 
 
-@app.route('/s/<identifier>')
-def session_chat(identifier):
+@app.route('/')
+def main():
+    return render_template('index.html')
+
+
+@app.route('/new_session')
+def new_session():
     cleanup_sessions()
+    identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
+    return redirect(url_for('session_chat', identifier=identifier))
+
+
+@app.route('/<identifier>')
+def session_chat(identifier):
     if not request.args.get('secret'):
         session = Session(identifier)
         secret = session.get_secret()
@@ -134,11 +139,11 @@ def session_chat(identifier):
     return render_template("session.html", room=identifier)
 
 
-@app.route('/s/<path:filepath>', methods=['GET'])
+@app.route('/<path:filepath>', methods=['GET'])
 def download(filepath):
     filename = filepath.split('/')[1]
     fernet = Fernet(encryption_key)
-    absolute_path = f"{dir_path}/s/{filepath}"
+    absolute_path = f"{files_path}/{filepath}"
     if os.path.exists(absolute_path):
         logging.debug(f"File requested: {filepath}")
         with open(absolute_path, 'rb') as enc_file:
@@ -152,11 +157,13 @@ def download(filepath):
 
 @app.errorhandler(404)
 def page_not_found(e):
+    logging.debug(f"404 - {e}")
     return render_template('404.html'), 404
 
 
 @app.errorhandler(502)
 def page_not_found(e):
+    logging.debug(f"502 - {e}")
     return render_template('404.html'), 404
 
 
@@ -241,7 +248,7 @@ def handle_message(message):
     if "data" in message:
         file = message['data']
         filename = message['name']
-        filepath = f"{dir_path}/s/{identifier}"
+        filepath = f"{files_path}/{identifier}"
         if not os.path.exists(filepath):
             os.makedirs(filepath)
 
@@ -308,7 +315,7 @@ def generate_qr(url, secret):
 
 if __name__ == '__main__':
     dir_path = os.path.dirname(os.path.realpath(__file__))
-    files_path = f'{dir_path}/s'
+    files_path = f'{dir_path}/uploads'
     if os.path.exists(files_path):
         shutil.rmtree(files_path)
     # Generate key and keep it only in memory
