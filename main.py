@@ -77,6 +77,13 @@ def get_session_by_identifier(identifier):
     return Session(identifier)
 
 
+def get_count_of_users():
+    counter = 0
+    for session in sessions:
+        counter += len(session.members)
+    return counter
+
+
 def cleanup_sessions():
     for session in sessions:
         logging.debug(f"Session found {session.identifier}, members: {len(session.members)}")
@@ -153,6 +160,14 @@ def download(filepath):
     else:
         logging.error(f"File requested, but not found: {filepath}")
         return render_template('404.html'), 404
+
+
+@app.route('/statistics', methods=['GET'])
+def statistics():
+    return {
+        "sessions": len(sessions),
+        "members": get_count_of_users()
+    }
 
 
 @app.errorhandler(404)

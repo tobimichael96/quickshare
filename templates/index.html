@@ -19,22 +19,35 @@
 </head>
 <body>
 <div class="title">TM-Quickshare</div>
-
-<div class="container">
-    <div class="content">
-        <div class="input-group mb-3" id="input_group">
-            <div class="input-group-prepend">
-                <span class="input-group-text" id="inputGroup">Name</span>
-            </div>
-            <input id="device_name" type="text" class="form-control" aria-label="Default" aria-describedby="inputGroup">
+<div class="content">
+    <div class="input-group mb-3" id="input_group">
+        <div class="input-group-prepend">
+            <span class="input-group-text" id="inputGroup">Name</span>
         </div>
-        <div id="warning" class="no-name">Please choose a device name.</div>
-        <br>
-        <button type="button" id="new_session" class="btn btn-primary btn-lg">Start session</button>
+        <input id="device_name" type="text" class="form-control" aria-label="Default" aria-describedby="inputGroup">
+    </div>
+    <div id="warning" class="no-name-error">Please choose a device name.</div>
+    <button type="button" id="new_session" class="btn btn-primary custom-button">Start session</button>
+    <p>
+        <a id="open_statistics" class="btn btn-secondary custom-button" data-bs-toggle="collapse" href="#collapseStatistic" role="button" aria-expanded="false" aria-controls="collapseStatistic">
+        Statistics
+        </a>
+    </p>
+    <div class="collapse" id="collapseStatistic">
+        <div class="card">
+            <ul class="list-group list-group-flush">
+                <li class="list-group-item">Open sessions: <span id="sessions_count" class="badge bg-secondary">0</span></li>
+                <li class="list-group-item">Active users: <span id="members_count" class="badge bg-secondary">0</span></li>
+            </ul>
+        </div>
     </div>
 </div>
 
 <script>
+    const open_statistics = document.getElementById("open_statistics");
+    let sessions_count = document.getElementById("sessions_count");
+    let members_count = document.getElementById("members_count");
+
     const input_group = document.getElementById("input_group");
     const warning = document.getElementById("warning");
     const device_name = document.getElementById("device_name");
@@ -54,11 +67,21 @@
         e.preventDefault();
         if (device_name.value == null || device_name.value.trim().length === 0) {
             input_group.classList.add("error");
-            warning.style.visibility = "visible";
+            warning.style.display = "block";
         } else {
+            window.localStorage.Name = device_name.value.trim();
             window.location.href = "/new_session";
         }
     };
+
+    open_statistics.onclick = function (e) {
+        fetch("/statistics").then(response => response.json().then(data => set_statistics(data)))
+    }
+
+    function set_statistics(data) {
+        sessions_count.innerText = data['sessions']
+        members_count.innerText = data['members']
+    }
 
 </script>
 

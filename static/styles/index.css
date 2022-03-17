@@ -26,14 +26,15 @@ h1 {
     position: absolute;
     left: 50%;
     top: 50%;
+    width: 10%;
     -webkit-transform: translate(-50%, -50%);
     transform: translate(-50%, -50%);
 }
 
-.no-name {
-    visibility: hidden;
+.no-name-error {
+    display: none;
     font-size: 14px;
-    margin-top: -15px;
+    margin-top: -18px;
     color: red;
     transition: 2s;
 }
@@ -45,6 +46,11 @@ h1 {
     border: 2px solid red;
     border-radius: 6px;
     outline: none;
+}
+
+.custom-button {
+    margin-top: 1vh;
+    width: 100%;
 }
 
 @keyframes shake {
