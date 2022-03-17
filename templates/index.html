@@ -47,6 +47,7 @@
     const open_statistics = document.getElementById("open_statistics");
     let sessions_count = document.getElementById("sessions_count");
     let members_count = document.getElementById("members_count");
+    let statistics_interval = null;
 
     const input_group = document.getElementById("input_group");
     const warning = document.getElementById("warning");
@@ -75,12 +76,22 @@
     };
 
     open_statistics.onclick = function (e) {
-        fetch("/statistics").then(response => response.json().then(data => set_statistics(data)))
+        if (statistics_interval === null) {
+            fetch("/statistics").then(response => response.json().then(data => set_statistics(data)))
+            statistics_interval = setInterval(statistics_update, 5000);
+        } else {
+            clearInterval(statistics_interval);
+            statistics_interval = null;
+        }
     }
 
     function set_statistics(data) {
         sessions_count.innerText = data['sessions']
         members_count.innerText = data['members']
+    }
+
+    function statistics_update() {
+        fetch("/statistics").then(response => response.json().then(data => set_statistics(data)))
     }
 
 </script>
