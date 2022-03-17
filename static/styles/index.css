@@ -66,11 +66,6 @@ h1 {
 /* media */
 @media (max-width: 1100px) {
     .content {
-        position: absolute;
-        left: 50%;
-        top: 50%;
         width: 40%;
-        -webkit-transform: translate(-50%, -50%);
-        transform: translate(-50%, -50%);
     }
 }
