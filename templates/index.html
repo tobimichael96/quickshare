@@ -59,7 +59,11 @@
     }
 
     // Set input to device name
-    device_name.value = window.localStorage.Name;
+    if (!window.localStorage.Name) {
+        device_name.value = "";
+    } else {
+        device_name.value = window.localStorage.Name;
+    }
 
     const new_session = document.getElementById("new_session");
 
