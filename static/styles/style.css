@@ -56,6 +56,11 @@ body {
     border-radius: .25rem;
 }
 
+.btn-right {
+    margin-top: 2vh;
+    width: 55%;
+}
+
 /* media */
 @media (max-width: 1000px) {
     .grid {
@@ -86,5 +91,9 @@ body {
         padding-top: 3vh;
         margin-left: .5rem;
         margin-right: .5rem;
+    }
+
+    .btn-right {
+        margin-bottom: 2vh;
     }
 }
