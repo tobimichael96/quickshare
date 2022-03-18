@@ -195,14 +195,16 @@ def disconnect():
 
 
 def send_error(user_id, identifier, user_name):
-    message = {
-        "message": "You tried to join a session without the correct secret. "
-                   "A new session will be created for you in 5 seconds."
-    }
-    emit('error', message, to=user_id)
     time = datetime.now().strftime('%H:%M')
     message = {
-        "message": "Device ({}) tried to join the room with a wrong password at {}. ".format(user_name, time)
+        "message": "You tried to join a session without the correct secret. "
+                   "A new session will be created for you in 5 seconds.",
+        "time": time
+    }
+    emit('error', message, to=user_id)
+    message = {
+        "message": f"Device ({user_name}) tried to join the room with a wrong password.",
+        "time": time
     }
     emit('system', message, to=identifier)
 
@@ -240,12 +242,14 @@ def joined(join):
             logging.debug("Sent message ({}) to the device ({}).".format(key, user_name))
     time = datetime.now().strftime('%H:%M')
     message = {
-        "message": "New device ({}) joined the room at {}.".format(user_name, time)
+        "message": f"New device ({user_name}) joined the room.",
+        "time": time
     }
     emit('system', message, to=identifier)
     room_devices = ", ".join(room for room in session.members.values())
     message = {
-        "message": "Current devices in the room: {}.".format(room_devices)
+        "message": f"Current devices in the room: {room_devices}.",
+        "time": time
     }
     emit('system', message, to=identifier)
 
@@ -254,6 +258,7 @@ def joined(join):
 def handle_message(message):
     identifier = message['room']
     secret = message['secret']
+    user = message['user']
     if not check_secret(secret, identifier):
         return
     if not identifier:
@@ -273,12 +278,14 @@ def handle_message(message):
         out_file.write(encrypted)
         out_file.close()
         response = {
+            "user": user,
             "time": time,
             "message": filename
         }
         emit('upload', response, to=identifier)
     else:
         response = {
+            "user": user,
             "time": time,
             "message": message['message']
         }

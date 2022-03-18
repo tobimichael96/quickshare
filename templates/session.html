@@ -58,6 +58,7 @@
     }
     let params = getSearchParameters();
     let secret = params.secret;
+    const device_name = window.localStorage.Name;
 
     // Check if this is the first visit, if yes, show the tip.
     if (!window.localStorage.isReturningVisitor) {
@@ -92,7 +93,7 @@
         socket.emit('init', {
             room: '{{ room }}',
             secret: secret,
-            user: window.localStorage.Name
+            user: device_name
         })
     });
 
@@ -122,6 +123,7 @@
             })
         } else {
             socket.emit('message', {
+                user: device_name,
                 message: message_input.value.trim(),
                 room: '{{ room }}',
                 secret: secret,
@@ -171,6 +173,7 @@
         }
 
         socket.emit('message', {
+            user: device_name,
             data: file,
             name: file.name.replace(/\s+/g, ''),
             room: '{{ room }}',
@@ -192,7 +195,7 @@
     // Redirect to home when breach is send.
     socket.on('error', function (msg) {
         let message_holder = $('#message_holder')
-        message_holder.append('<div class="message"><b>System: </b>' + msg.message + '</div>')
+        message_holder.append('<div class="message"><b>' + msg.time + ' - System: </b>' + msg.message + '</div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });
@@ -204,7 +207,7 @@
     // Add a system message to the chat box.
     socket.on('system', function (msg) {
         let message_holder = $('#message_holder')
-        message_holder.append('<div class="message"><b>System: </b>' + msg.message + '</div>')
+        message_holder.append('<div class="system-message"><b>' + msg.time + ' - System: </b>' + msg.message + '</div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });
@@ -214,7 +217,7 @@
     socket.on('response', function (msg) {
         let message_holder = $('#message_holder')
         message_holder.append('<div class="message">' +
-            '<div onclick="copyToClipboard(this)"><b>' + msg.time + ': </b>' + msg.message + '</div></div>')
+            '<div onclick="copyToClipboard(this)"><b>' + msg.time + ' - ' + msg.user + ': </b>' + msg.message + '</div></div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });
@@ -233,7 +236,7 @@
     // Helper function to copy a message to the clipboard. Works only on https.
     function copyToClipboard(input) {
         let text = input.textContent;
-        let regex = /(\d*:\d*: )(.*)/;
+        let regex = /(\d*:\d* - .*: )(.*)/;
         let matches = text.match(regex);
         navigator.clipboard.writeText(matches[2]);
     }

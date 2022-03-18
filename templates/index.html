@@ -51,18 +51,18 @@
 
     const input_group = document.getElementById("input_group");
     const warning = document.getElementById("warning");
-    const device_name = document.getElementById("device_name");
+    const device_name_input = document.getElementById("device_name");
 
     // Check if the user already set a device name, if not force them to set one.
     if (window.localStorage.Name) {
-        device_name.value = window.localStorage.Name;
+        device_name_input.value = window.localStorage.Name;
     }
 
     // Set input to device name
     if (!window.localStorage.Name) {
-        device_name.value = "";
+        device_name_input.value = "";
     } else {
-        device_name.value = window.localStorage.Name;
+        device_name_input.value = window.localStorage.Name;
     }
 
     const new_session = document.getElementById("new_session");
@@ -70,7 +70,7 @@
     // Start a new session when name is entered.
     new_session.onclick = function (e) {
         e.preventDefault();
-        if (device_name.value == null || device_name.value.trim().length === 0) {
+        if (device_name_input.value == null || device_name_input.value.trim().length === 0) {
             input_group.classList.add("error");
             warning.style.display = "block";
         } else {
