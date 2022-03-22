@@ -58,7 +58,16 @@
     }
     let params = getSearchParameters();
     let secret = params.secret;
-    const device_name = window.localStorage.Name;
+    let device_name = window.localStorage.Name;
+
+    // Check if the user already set a device name, if not force them to set one.
+    if (!device_name) {
+        do {
+            device_name = prompt("Please enter a device name:");
+        } while (device_name == null || device_name.trim().length === 0);
+        device_name = device_name.trim();
+        window.localStorage.Name = device_name;
+    }
 
     // Check if this is the first visit, if yes, show the tip.
     if (!window.localStorage.isReturningVisitor) {
