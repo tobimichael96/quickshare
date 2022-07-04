@@ -100,9 +100,9 @@
     const socket = io.connect(location.protocol + "//" + document.domain + ':' + location.port);
     socket.on('connect', function () {
         socket.emit('init', {
-            room: '{{ room }}',
+            identifier: '{{ identifier }}',
             secret: secret,
-            user: device_name
+            user_name: device_name
         })
     });
 
@@ -127,14 +127,14 @@
         if (message_input.value.trim().indexOf('/') === 0) {
             socket.emit('system_message', {
                 message: message_input.value.trim(),
-                room: '{{ room }}',
+                identifier: '{{ identifier }}',
                 secret: secret,
             })
         } else {
             socket.emit('message', {
-                user: device_name,
+                user_name: device_name,
                 message: message_input.value.trim(),
-                room: '{{ room }}',
+                identifier: '{{ identifier }}',
                 secret: secret,
             })
         }
@@ -182,10 +182,10 @@
         }
 
         socket.emit('message', {
-            user: device_name,
+            user_name: device_name,
             data: file,
             name: file.name.replace(/\s+/g, ''),
-            room: '{{ room }}',
+            identifier: '{{ identifier }}',
             secret: secret,
         });
 
@@ -225,8 +225,8 @@
     // Add the received message to the chat box.
     socket.on('response', function (msg) {
         let message_holder = $('#message_holder')
-        let user = msg.user;
-        if (msg.user === device_name) {
+        let user = msg.user_name;
+        if (msg.user_name === device_name) {
             user = "You";
         }
         message_holder.append('<div class="message">' +
@@ -240,7 +240,7 @@
     socket.on('upload', function (msg) {
         let message_holder = $('#message_holder')
         message_holder.append('<div class="message">' +
-            '<b>' + msg.time + ': </b><a href="{{ room }}/' + msg.message + '"target="_blank"' + '>' + msg.message + '</a></div>')
+            '<b>' + msg.time + ': </b><a href="{{ identifier }}/' + msg.message + '"target="_blank"' + '>' + msg.message + '</a></div>')
         message_holder.scrollTop(function () {
             return this.scrollHeight;
         });

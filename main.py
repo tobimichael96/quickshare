@@ -22,8 +22,9 @@ sessions = []
 
 
 class Session:
-    def __init__(self, identifier, members=None):
+    def __init__(self, identifier, members=None, initial=False):
         self.identifier = identifier
+        self.initial = initial
         self.secret = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
         if members is None:
             members = {}
@@ -56,10 +57,16 @@ class Session:
     def get_user_name_by_user_id(self, user_id):
         return self.members[user_id]
 
+    def get_initial_state(self):
+        return self.initial
+
+    def set_initial_state(self, initial):
+        self.initial = initial
+
     def __repr__(self):
-        return "Identifier: {}\n" \
-               "Secret: {}\n" \
-               "Members: {}".format(self.identifier, self.secret, self.members)
+        return f'Identifier: {self.identifier}\n' \
+               f'Initial: {self.initial}\n' \
+               f'Members: {self.members}'
 
 
 def get_session_by_user_id(user_id):
@@ -74,7 +81,7 @@ def get_session_by_identifier(identifier):
     for session in sessions:
         if session.get_identifier() == identifier:
             return session
-    return Session(identifier)
+    return None
 
 
 def get_count_of_users():
@@ -86,9 +93,9 @@ def get_count_of_users():
 
 def cleanup_sessions():
     for session in sessions:
-        logging.debug(f"Session found {session.identifier}, members: {len(session.members)}")
+        logging.debug(f"Session found {session.get_identifier()}, members: {len(session.members)}")
         if len(session.members) == 0:
-            session_folder = f"{files_path}/{session.identifier}"
+            session_folder = f"{files_path}/{session.get_identifier()}"
             if os.path.exists(session_folder):
                 logging.debug("Folder exists, going to clean up.")
                 for filename in os.listdir(session_folder):
@@ -99,18 +106,22 @@ def cleanup_sessions():
                         elif os.path.isdir(file_path):
                             shutil.rmtree(file_path)
                     except Exception as e:
-                        print('Failed to delete %s. Reason: %s' % (file_path, e))
+                        logging.error(f'Failed to delete {file_path}. Reason: {e}')
                 shutil.rmtree(session_folder)
             else:
                 logging.debug("Folder does not exist, nothing to do.")
             sessions.remove(session)
+            logging.debug(f'Successfully removed session ({session}).')
+            del session
 
 
-def check_secret(secret, identifier):
+def check_secret(secret, identifier, user_name):
     session = get_session_by_identifier(identifier)
     if secret == session.get_secret():
         return True
     else:
+        logging.critical(f'The device ({user_name}) did provide a secret, but the secret does not match.')
+        send_error(identifier)
         return False
 
 
@@ -133,17 +144,32 @@ def main():
 def new_session():
     cleanup_sessions()
     identifier = ''.join(random.SystemRandom().choice(string.ascii_uppercase + string.digits) for _ in range(36))
+    session = Session(identifier, initial=True)
+    logging.debug("Created new session: ({}).".format(session.get_identifier()))
     return redirect(url_for('session_chat', identifier=identifier))
 
 
 @app.route('/<identifier>')
 def session_chat(identifier):
-    if not request.args.get('secret'):
-        session = Session(identifier)
-        secret = session.get_secret()
-        session.add_qr(generate_qr(request.url, secret))
-        logging.debug("Created new session ({}).".format(session.get_identifier()))
-    return render_template("session.html", room=identifier)
+    secret = request.args.get('secret')
+    if not secret:
+        session = get_session_by_identifier(identifier)
+        if session:
+            if session.get_initial_state():
+                secret = session.get_secret()
+                session.add_qr(generate_qr(request.url, secret))
+            else:
+                if check_secret(secret, identifier, 'Unknown'):
+                    return render_template("session.html", identifier=identifier)
+                else:
+                    return redirect(url_for('error'))
+        else:
+            return redirect(url_for('error'))
+    else:
+        if not check_secret(secret, identifier, 'Unknown'):
+            return redirect(url_for('error'))
+
+    return render_template("session.html", identifier=identifier)
 
 
 @app.route('/<path:filepath>', methods=['GET'])
@@ -170,6 +196,11 @@ def statistics():
     }
 
 
+@app.route('/error', methods=['GET'])
+def error():
+    return render_template('error.html')
+
+
 @app.errorhandler(404)
 def page_not_found(e):
     logging.debug(f"404 - {e}")
@@ -182,6 +213,15 @@ def page_not_found(e):
     return render_template('404.html'), 404
 
 
+def send_error(identifier):
+    time = datetime.now().strftime('%H:%M')
+    message = {
+        "message": 'User tried to join the session without the valid secret.',
+        "time": time
+    }
+    socketio.emit('system', message, to=identifier)
+
+
 @socketio.on('disconnect')
 def disconnect():
     user_id = request.sid
@@ -190,76 +230,76 @@ def disconnect():
         leave_room(room)
     session = get_session_by_user_id(user_id)
     if session:
-        logging.debug("Removed user ({}) from session ({}).".format(session.get_user_name_by_user_id(user_id), session.get_identifier()))
+        username = session.get_user_name_by_user_id(user_id)
+        identifier = session.get_identifier()
+        logging.debug(f'Removed user ({username}) from session ({identifier}).')
         session.remove_member(user_id)
-
-
-def send_error(user_id, identifier, user_name):
-    time = datetime.now().strftime('%H:%M')
-    message = {
-        "message": "You tried to join a session without the correct secret. "
-                   "A new session will be created for you in 5 seconds.",
-        "time": time
-    }
-    emit('error', message, to=user_id)
-    message = {
-        "message": f"Device ({user_name}) tried to join the room with a wrong password.",
-        "time": time
-    }
-    emit('system', message, to=identifier)
+        time = datetime.now().strftime('%H:%M')
+        message = {
+            "message": f"{username} left the session.",
+            "time": time
+        }
+        emit('system', message, to=identifier)
 
 
 @socketio.on('init')
 def joined(join):
-    identifier = join['room']
-    if not identifier:
+    identifier = join['identifier']
+    session = get_session_by_identifier(identifier)
+    if not session:
         return
     user_id = request.sid
-    user_name = join['user']
-    session = get_session_by_identifier(identifier)
+    user_name = join['user_name']
     messages = []
-    if 'secret' in join:
-        secret = join['secret']
-        if not check_secret(secret, identifier):
-            send_error(user_id, identifier, user_name)
-            logging.error("The secret the device ({}) provided was not correct.".format(user_name))
+    if 'secret' not in join:
+        if session.get_initial_state():
+            logging.debug(f'The device ({user_name}) did not provide a secret, but the session is initializing.')
+            messages.append({"secret": {"secret": f'{session.get_secret()}'}})
+        else:
+            logging.error(f'The device ({user_name}) did not provide any secret and '
+                          f'the session is not in initial state anymore.')
             return
     else:
-        if not check_session_empty(identifier):
-            send_error(user_id, identifier, user_name)
-            logging.error("The device ({}) did not provide any secret, but the session was not empty.".format(user_name))
+        secret = join['secret']
+        if not check_secret(secret, identifier, user_name):
             return
         else:
-            logging.debug("The device ({}) did not provide a secret and the session was empty.".format(user_name))
-            messages.append({"secret": {"secret": "{}".format(session.get_secret())}})
+            logging.debug(f'The device ({user_name}) provided a secret that matched.')
+
     session.add_member(user_id, user_name)
     join_room(identifier)
-    logging.debug("Added member ({}) to session ({}).".format(session.get_members(), session.get_identifier()))
-    messages.append({"qrcode": {"qrcode": "{}".format(session.get_qr())}})
+    logging.debug(f'Added member ({user_name}) to session ({session.get_identifier()}).')
+    messages.append({"qrcode": {"qrcode": f'{session.get_qr()}'}})
     for message in messages:
         for key in message:
             emit(key, message[key], to=user_id)
-            logging.debug("Sent message ({}) to the device ({}).".format(key, user_name))
+            logging.debug(f'Sent message ({key}) to the device ({user_name}).')
     time = datetime.now().strftime('%H:%M')
-    message = {
-        "message": f"New device ({user_name}) joined the room.",
-        "time": time
-    }
-    emit('system', message, to=identifier)
-    room_devices = ", ".join(room for room in session.members.values())
-    message = {
-        "message": f"Current devices in the room: {room_devices}.",
-        "time": time
-    }
+    if not session.get_initial_state():
+        message = {
+            "message": f'New device ({user_name}) joined the room.',
+            "time": time
+        }
+        emit('system', message, to=identifier)
+        message = {
+            "message": f'Current devices in the room: {session.get_members()}.',
+            "time": time
+        }
+    else:
+        message = {
+            "message": f'New session for {user_name} created.',
+            "time": time
+        }
+        session.set_initial_state(False)
     emit('system', message, to=identifier)
 
 
 @socketio.on('message')
 def handle_message(message):
-    identifier = message['room']
+    identifier = message['identifier']
     secret = message['secret']
-    user = message['user']
-    if not check_secret(secret, identifier):
+    user_name = message['user_name']
+    if not check_secret(secret, identifier, user_name):
         return
     if not identifier:
         return
@@ -278,14 +318,14 @@ def handle_message(message):
         out_file.write(encrypted)
         out_file.close()
         response = {
-            "user": user,
+            "user_name": user_name,
             "time": time,
             "message": filename
         }
         emit('upload', response, to=identifier)
     else:
         response = {
-            "user": user,
+            "user_name": user_name,
             "time": time,
             "message": message['message']
         }
@@ -294,7 +334,7 @@ def handle_message(message):
 
 @socketio.on('system_message')
 def handle_system_message(message):
-    identifier = message['room']
+    identifier = message['identifier']
     secret = message['secret']
     if not check_secret(secret, identifier):
         return
